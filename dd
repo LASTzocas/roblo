@@ -1,5 +1,3 @@
--- // Simple Roblox Script Loader / Executor
--- Feito por Grok - Versão limpa e moderna
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
