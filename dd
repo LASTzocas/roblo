@@ -1,0 +1,212 @@
+-- // Simple Roblox Script Loader / Executor
+-- Feito por Grok - Versão limpa e moderna
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local getgenv = getgenv or function() return _G end
+
+-- Configurações
+getgenv().ScriptHub = getgenv().ScriptHub or {
+    LoadedScripts = {},
+    AutoExecute = true
+}
+
+-- Funções de Clipboard
+local function setClipboard(text)
+    if setclipboard then
+        setclipboard(text)
+        notify("✅ Copiado para a área de transferência!")
+    else
+        notify("❌ setclipboard não suportado neste executor.")
+    end
+end
+
+local function getClipboard()
+    if getclipboard then
+        return getclipboard()
+    else
+        notify("❌ getclipboard não suportado.")
+        return ""
+    end
+end
+
+-- Notificações simples
+function notify(message, duration)
+    duration = duration or 3
+    local screenGui = CoreGui:FindFirstChild("SimpleNotify") or Instance.new("ScreenGui")
+    screenGui.Name = "SimpleNotify"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 60)
+    frame.Position = UDim2.new(1, -320, 1, -80)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -20, 1, 0)
+    text.Position = UDim2.new(0, 10, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = message
+    text.TextColor3 = Color3.fromRGB(255, 255, 255)
+    text.TextScaled = true
+    text.Font = Enum.Font.GothamSemibold
+    text.Parent = frame
+
+    -- Animação
+    frame.Position = UDim2.new(1, 20, 1, -80)
+    TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(1, -320, 1, -80)}):Play()
+
+    task.delay(duration, function()
+        TweenService:Create(frame, TweenInfo.new(0.5), {Position = UDim2.new(1, 20, 1, -80)}):Play()
+        task.wait(0.5)
+        frame:Destroy()
+    end)
+end
+
+-- Executar código
+local function executeScript(code)
+    if not code or code == "" then
+        notify("❌ Código vazio!")
+        return
+    end
+
+    local success, err = pcall(function()
+        loadstring(code)()
+    end)
+
+    if success then
+        notify("✅ Script executado com sucesso!")
+    else
+        notify("❌ Erro: " .. tostring(err):sub(1, 100))
+    end
+end
+
+-- Verificar se já está carregado
+local function isLoaded(name)
+    return getgenv().ScriptHub.LoadedScripts[name] == true
+end
+
+local function markAsLoaded(name)
+    getgenv().ScriptHub.LoadedScripts[name] = true
+end
+
+-- Interface Simples (ScreenGui)
+local function createGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CustomScriptLoader"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 420, 0, 280)
+    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -140)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = mainFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 50)
+    title.BackgroundTransparency = 1
+    title.Text = "Simple Script Loader"
+    title.TextColor3 = Color3.fromRGB(0, 170, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+
+    -- Caixa de texto
+    local textBox = Instance.new("TextBox")
+    textBox.Size = UDim2.new(1, -20, 0, 120)
+    textBox.Position = UDim2.new(0, 10, 0, 60)
+    textBox.PlaceholderText = "Cole o script aqui..."
+    textBox.Text = ""
+    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    textBox.TextWrapped = true
+    textBox.TextScaled = true
+    textBox.ClearTextOnFocus = false
+    textBox.Parent = mainFrame
+
+    local tbCorner = Instance.new("UICorner")
+    tbCorner.CornerRadius = UDim.new(0, 8)
+    tbCorner.Parent = textBox
+
+    -- Botões
+    local function createButton(text, posY, color, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 190, 0, 40)
+        btn.Position = UDim2.new(0, posY, 0.85, 0)
+        btn.BackgroundColor3 = color
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextScaled = true
+        btn.Font = Enum.Font.GothamSemibold
+        btn.Parent = mainFrame
+
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 8)
+        btnCorner.Parent = btn
+
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+
+    createButton("Executar", 20, Color3.fromRGB(0, 170, 0), function()
+        executeScript(textBox.Text)
+    end)
+
+    createButton("Clipboard → Executar", 220, Color3.fromRGB(0, 120, 255), function()
+        local clip = getClipboard()
+        if clip and clip ~= "" then
+            textBox.Text = clip
+            executeScript(clip)
+        end
+    end)
+
+    createButton("Copiar Código", 20, Color3.fromRGB(100, 100, 100), function()
+        setClipboard(textBox.Text)
+    end)
+
+    notify("✅ Loader carregado! Pressione F9 para abrir o console.", 5)
+end
+
+-- Anti-detecção básico (pode ser expandido)
+local function antiDetect()
+    -- Evita algumas detecções comuns
+    if hookmetamethod then
+        local oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if method == "FireServer" and self.Name:find("Anti") then
+                return
+            end
+            return oldNamecall(self, ...)
+        end)
+    end
+end
+
+-- Inicialização
+antiDetect()
+createGUI()
+
+notify("🚀 Script Loader pronto! Cole scripts ou use o clipboard.", 6)
+
+-- Auto-executar scripts salvos no getgenv (opcional)
+if getgenv().ScriptHub.AutoExecute and getgenv().AutoScript then
+    task.spawn(function()
+        executeScript(getgenv().AutoScript)
+    end)
+end
